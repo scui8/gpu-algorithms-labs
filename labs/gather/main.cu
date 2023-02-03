@@ -1,7 +1,15 @@
 #include "helper.hpp"
 
 __global__ void s2g_gpu_gather_kernel(uint32_t *in, uint32_t *out, int len) {
-  //@@ INSERT KERNEL CODE HERE
+  uint32_t gOutIdx = blockDim.x * blockIdx.x + threadIdx.x;
+  if (gOutIdx < len) {
+    int out_reg = 0;
+    for (int inIdx = 0; inIdx < len; ++inIdx) {
+      int intermediate = outInvariant(in[inIdx]);
+      out_reg += outDependent(intermediate, inIdx, gOutIdx);
+    } 
+    atomicAdd(&(out[gOutIdx]), out_reg);
+  }
 }
 
 
@@ -18,7 +26,9 @@ static void s2g_cpu_gather(uint32_t *in, uint32_t *out, int len) {
 
 
 static void s2g_gpu_gather(uint32_t *in, uint32_t *out, int len) {
-  //@@ INSERT CODE HERE
+  dim3 dimGrid(ceil((len*1.0) / 1024), 1, 1);
+  dim3 dimBlock(1024, 1, 1);
+  s2g_gpu_gather_kernel<<<dimGrid, dimBlock>>>(in, out, len);
 }
 
 
